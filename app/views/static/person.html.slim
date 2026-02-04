@@ -2,48 +2,103 @@
   aside.side-bar-area
     .friends-list
       p.friends-list-header FRIENDS
-      a.friend-name anbu
-      a.friend-name barath
+      - @other_users.each do |friend|
+        = link_to friend.email, person_path(friend), class: "friend-name"
+
   .main-area
-    .top-bar
-      h1.top-bar-title Dashboard
-      .top-bar-actions
-        button.btn.btn-primary type="button"  Add an expense
-        button.btn.btn-secondary type="button"  Settle up
-    .expenses-list
-      .expense-item
-        .item-lhs
-          p SEP 30
-          p Hello
-        .item-rhs
-          .you-details
-            p you paid
-            p $23.00
-          .you-details
-            p you lent anbu
-            p $11.50
-        button.remove-btn ❌
-      .expense-item
-        .item-lhs
-          p SEP 30
-          p Hello
-        .item-rhs
-          .you-details
-            p you paid
-            p $23.00
-          .you-details
-            p you lent anbu
-            p $11.50
-        button.remove-btn ❌
-      .expense-item
-        .item-lhs
-          p SEP 30
-          p Hello
-        .item-rhs
-          .you-details
-            p you paid
-            p $23.00
-          .you-details
-            p you lent anbu
-            p $11.50
-        button.remove-btn ❌
+    / ================= TOP BAR =================
+    .top-bar.d-flex.justify-content-between.align-items-center
+      h1.top-bar-title = @friend.email
+
+      .top-bar-actions.d-flex.gap-2
+        button.btn.btn-primary type="button" data-bs-toggle="modal" data-bs-target="#expenseModal"
+          | Add an expense
+
+        - if @friend_balance_with_current_user[:i_owe].to_d > 0
+          = form_with url: settlements_path, method: :post, local: true do
+            = hidden_field_tag :payee_id, @friend.id
+            = hidden_field_tag :amount, @friend_balance_with_current_user[:i_owe]
+
+            = submit_tag "Settle up",
+              class: "btn btn-outline-secondary",
+              data: { confirm: "Pay #{number_to_currency(@friend_balance_with_current_user[:i_owe])} to #{@friend.email}?" }
+
+    / ================= BALANCES =================
+    - balance = @friend_balance_with_current_user || { i_owe: 0, owes_me: 0 }
+
+    .dashboard-balances.mt-4
+      .balances-bar.d-flex.gap-4
+        .balance-block
+          p.text-muted you owe this friend
+          p.fw-bold = number_to_currency(balance[:i_owe] || 0)
+
+        .balance-block
+          p.text-muted this friend owes you
+          p.fw-bold = number_to_currency(balance[:owes_me] || 0)
+
+    / ================= EXPENSE LIST =================
+    .expenses-list.mt-4
+      - @expenses_paid_by_friend.each do |expense|
+        .expense-item.d-flex.justify-content-between.align-items-start.mb-3.p-3.border.rounded
+          .item-lhs
+            p.fw-semibold.mb-0 = expense.description
+            p.text-muted.small = expense.created_at.strftime("%b %d, %Y")
+
+          .item-rhs
+            - expense.expense_splits.each do |split|
+              - next if split.user_id == @friend.id
+              p.small.mb-1
+                = "#{split.user.email} owes "
+                strong = number_to_currency(split.amount)
+
+#expenseModal.modal.fade tabindex="-1"
+  .modal-dialog.modal-lg.modal-dialog-centered
+    .modal-content
+      = form_with url: expenses_path, method: :post, local: true do |f|
+        .modal-header
+          h5.modal-title Add an expense
+          button.btn-close type="button" data-bs-dismiss="modal"
+
+        .modal-body
+          = f.hidden_field :friend_id, value: @friend.id
+
+          .mb-3
+            = f.label :description, "Expense description"
+            = f.text_field :description, class: "form-control", required: true
+
+          .mb-3
+            = f.label :tax, "Tax (optional)"
+            = f.number_field :tax, class: "form-control", step: 0.01, value: 0
+
+          hr
+          h6.mb-2 Items
+
+          #items-wrapper
+            .item-block.border.rounded.p-3.mb-3 data-index="0"
+              .row.g-2
+                .col-md-5
+                  = text_field_tag "items[0][name]", nil,
+                    placeholder: "Item name",
+                    class: "form-control",
+                    required: true
+
+                .col-md-3
+                  = number_field_tag "items[0][amount]", nil,
+                    step: 0.01,
+                    placeholder: "Amount",
+                    class: "form-control",
+                    required: true
+
+                .col-md-4
+                  - [current_user, @friend].each do |user|
+                    .form-check
+                      = check_box_tag "items[0][users][]", user.id, true, class: "form-check-input"
+                      = label_tag "items_0_users_#{user.id}", user.email, class: "form-check-label"
+
+          button.btn.btn-sm.btn-outline-primary.mt-2 type="button" id="add-item-button"
+            | + Add another item
+
+        .modal-footer
+          button.btn.btn-secondary type="button" data-bs-dismiss="modal"
+            | Cancel
+          = f.submit "Save expense", class: "btn btn-primary"

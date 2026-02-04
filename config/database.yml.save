@@ -1,0 +1,34 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  username: ahsan
+  password: mypassword   # <- the password you just set
+  host: localhost
+
+development:
+  <<: *default
+  database: ahsanullah_development
+
+test:
+  <<: *default
+  database: ahsadefault: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: 5
+  username: ahsan
+  password:
+  host: localhost
+
+development:
+  <<: *default
+  database: ahsanullah_development
+
+test:
+  <<: *default
+  database: ahsanullah_test
+
+production:
+  <<: *default
+  database: ahsanullah_production
+

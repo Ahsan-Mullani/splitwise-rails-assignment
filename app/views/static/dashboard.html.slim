@@ -2,59 +2,90 @@
   aside.side-bar-area
     .friends-list
       p.friends-list-header FRIENDS
-      a.friend-name anbu
-      a.friend-name barath
+      - @friends.each do |friend|
+        = link_to friend.email, person_path(friend), class: "friend-name"
+
   .main-area
     .top-bar
       h1.top-bar-title Dashboard
       .top-bar-actions
-        button.btn.btn-primary type="button" data-bs-toggle="modal" data-bs-target="#expenseModal"  Add an expense
-        button.btn.btn-secondary type="button"  Settle up
+        button.btn.btn-primary type="button" data-bs-toggle="modal" data-bs-target="#expenseModal"
+          | Add an expense
 
     .dashboard-balances
       .balances-bar
         .balance-block
           p total balance
-          p + $11.50
+          p = number_to_currency(@total_balance)
         .balance-block
           p you owe
-          p $0.00
+          p = number_to_currency(@total_i_owe)
         .balance-block
           p you are owed
-          p $11.50
+          p = number_to_currency(@total_owed_to_me)
+
       .dashboard-detail
         .detail-block
           h2.detail-title you owe
-          .user-detail
-            img.user-img alt="profile" src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png" /
-            .user-info
-              p anbu
-              p owes you $11.50
-          .user-detail
-            img.user-img alt="profile" src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png" /
-            .user-info
-              p anbu
-              p owes you $11.50
+          - @friends_i_owe.each do |friend_id, amount|
+            - friend = @friends_i_owe_lookup[friend_id]
+            .user-detail
+              img.user-img src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png"
+              .user-info
+                p = friend.email
+                p = number_to_currency(amount)
+
+                = form_with url: settlements_path, method: :post, local: true do
+                  = hidden_field_tag :payee_id, friend.id
+                  = hidden_field_tag :amount, amount
+
+                  = submit_tag "Settle up",
+                    class: "btn btn-sm btn-secondary",
+                    data: { confirm: "Settle #{number_to_currency(amount)} with #{friend.email}?" }
+
         .detail-block
           h2.detail-title you are owed
-          .user-detail
-            img.user-img alt="profile" src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png" /
-            .user-info
-              p anbu
-              p owes you $11.50
-          .user-detail
-            img.user-img alt="profile" src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png" /
-            .user-info
-              p anbu
-              p owes you $11.50
-#expenseModal.modal.fade aria-hidden="true" aria-labelledby="expenseModalLabel" tabindex="-1" 
+          - @friends_who_owe_me.each do |friend_id, amount|
+            - friend = @friends_who_owe_me_lookup[friend_id]
+            .user-detail
+              img.user-img src="https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png"
+              .user-info
+                p = friend.email
+                p = number_to_currency(amount)
+
+#expenseModal.modal.fade tabindex="-1"
   .modal-dialog
     .modal-content
-      .modal-header
-        h5#expenseModalLabel.modal-title Add an expense
-        button.btn-close aria-label="Close" data-bs-dismiss="modal" type="button" 
-      .modal-body
-        | Fields to be added
-      .modal-footer
-        button.btn.btn-secondary data-bs-dismiss="modal" type="button"  Close
-        button.btn.btn-primary type="button"  Save changes
+      = form_with url: expenses_path, method: :post, local: true, id: "expense-form" do |f|
+        .modal-header
+          h5.modal-title Add an expense
+          button.btn-close type="button" data-bs-dismiss="modal"
+
+        .modal-body
+          .mb-3
+            = f.label :description, "Expense description"
+            = f.text_field :description, class: "form-control", required: true
+
+          .mb-3
+            = f.label :tax, "Tax (optional)"
+            = f.number_field :tax, class: "form-control", step: 0.01, value: 0
+
+          .mb-3
+            p Items
+            #items-wrapper
+              .item-block
+                = text_field_tag "items[0][name]", nil, placeholder: "Item name", class: "form-control mb-1", required: true
+                = number_field_tag "items[0][amount]", nil, step: 0.01, placeholder: "Amount", class: "form-control mb-1", required: true
+
+                - @friends.each do |user|
+                  .form-check
+                    = check_box_tag "items[0][users][]", user.id, true, class: "form-check-input"
+                    = label_tag "items_0_users_#{user.id}", user.email, class: "form-check-label"
+
+          button.btn.btn-sm.btn-outline-primary type="button" id="add-item-button"
+            | Add another item
+
+        .modal-footer
+          button.btn.btn-secondary type="button" data-bs-dismiss="modal"
+            | Cancel
+          = f.submit "Save expense", class: "btn btn-primary"

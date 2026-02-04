@@ -33,3 +33,33 @@
 
 ## Contact us
 If you need any help regarding this assignment or want to join [Commutatus](https://www.commutatus.com/), drop us an email at work@commutatus.com
+
+
+## Implementation Notes
+
+These are the key features actually built for this assignment:
+
+- **Expense creation with item-level splitting**
+  - Each item can be split **equally** among selected participants
+  - Or assigned **fully** to a single user
+  - Optional **tax** is always split equally among all participants in the expense
+
+- **Dynamic balance calculation** (Splitwise-style)
+  - No `balance` field stored on the `User` model
+  - Balances are computed live from all expense splits + settlements
+  - Shows per-friend breakdown of who owes what
+
+- **Settlement functionality**
+  - Users can record payments to each other
+  - Supports **partial settlements**
+  - Payments reduce outstanding amounts but never modify or re-open past expenses
+
+- **Testing**
+  - RSpec test suite covering:
+    - User balance calculations
+    - Expense creation & splitting logic (via service object)
+    - Settlement application and balance impact
+
+For detailed assumptions, simplifications, and out-of-scope features, see [`ASSUMPTIONS.md`]
+
+This keeps the focus on the core expense-sharing and settlement mechanics while staying manageable for the assignment scope.

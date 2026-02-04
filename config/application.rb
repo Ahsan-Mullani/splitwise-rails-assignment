@@ -10,6 +10,8 @@ module BeAssignmentJunior1
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 6.1
+    
+    config.autoload_paths += %W(#{config.root}/app/services)
 
     # Configuration for the application, engines, and railties goes here.
     #
