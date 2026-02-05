@@ -1,68 +1,67 @@
+# app/services/expense_creator.rb
+# Service object to handle creating an expense along with its items and splits
 class ExpenseCreator
-  # Service entry point for creating an expense with items, splits, and tax
+  # Params:
+  #   description: string describing the expense
+  #   paid_by: User object who paid the expense
+  #   items: array of hashes, each containing :name, :amount, :users
+  #   tax: optional tax amount to be added
   def self.call(description:, paid_by:, items:, tax: 0)
-    # Wrap everything in a transaction to ensure data consistency
     ActiveRecord::Base.transaction do
-      # Create the main expense record
+      # =========================
+      # Create main expense record
+      # =========================
       expense = Expense.create!(
         description: description,
         paid_by: paid_by,
         tax: tax
       )
 
-      # Hash to accumulate how much each user owes
-      splits = Hash.new(0)
+      splits = Hash.new(0) # Tracks how much each user owes
+      total_amount = 0.to_d # Tracks total expense including tax
 
-      # Track total amount for the expense (including tax later)
-      total_amount = 0.to_d
-
-      # ========================
-      # Process expense items
-      # ========================
-
+      # =========================
+      # Process each item in the expense
+      # =========================
       items.each do |item|
         amount = item[:amount].to_d
-        users  = item[:users]
+        users  = item[:users].map(&:to_i)
 
-        # Create expense item record
-        # If the item is shared, assigned_user_id is nil
-        # Otherwise, it is assigned to the first user
+        # Create individual expense item record
+        # If only one user, assign it directly; otherwise leave nil for shared
         expense.expense_items.create!(
           name: item[:name],
           amount: amount,
-          assigned_user_id: item[:shared] ? nil : users.first
+          assigned_user_id: users.size == 1 ? users.first : nil
         )
 
-        # Add item amount to total
         total_amount += amount
 
-        if item[:shared]
-          # Split amount evenly among all selected users
-          per_user = amount / users.count
-          users.each { |u| splits[u] += per_user }
+        # =========================
+        # Split logic for this item
+        # =========================
+        if users.size > 1
+          # Shared expense → split equally among selected users
+          per_user_amount = amount / users.size
+          users.each { |user_id| splits[user_id] += per_user_amount }
         else
-          # Assign full amount to a single user
+          # Personal expense → assign full amount to the single user
           splits[users.first] += amount
         end
       end
 
-      # ========================
-      # Handle tax distribution
-      # ========================
-
+      # =========================
+      # Split tax across all users
+      # =========================
       if tax.to_d.positive?
-        # Distribute tax evenly across all users involved
-        tax_split = tax.to_d / splits.keys.count
-        splits.each_key { |u| splits[u] += tax_split }
-
-        # Add tax to total expense amount
+        tax_split = tax.to_d / splits.keys.size
+        splits.each_key { |user_id| splits[user_id] += tax_split }
         total_amount += tax.to_d
       end
 
-      # ========================
-      # Create expense splits
-      # ========================
-
+      # =========================
+      # Create expense splits for each user
+      # =========================
       splits.each do |user_id, amount|
         expense.expense_splits.create!(
           user_id: user_id,
@@ -70,10 +69,9 @@ class ExpenseCreator
         )
       end
 
-      # Update total amount on the expense
+      # Update total amount on expense
       expense.update!(total_amount: total_amount)
 
-      # Return the created expense
       expense
     end
   end
