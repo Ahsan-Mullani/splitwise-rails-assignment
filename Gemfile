@@ -15,6 +15,9 @@ gem 'slim-rails'
 gem 'turbolinks', '~> 5'
 gem 'webpacker', '~> 5.0'
 gem 'bootstrap', '~> 5.1.1'
+gem "net-smtp"
+gem "net-imap"
+gem "net-pop"
 
 group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
